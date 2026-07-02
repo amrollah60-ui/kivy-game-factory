@@ -32,17 +32,26 @@ jobs:
         pip install "cython<3.0.0" virtualenv
         pip install git+https://github.com/kivy/buildozer.git
 
-    - name: Configure buildozer.spec
+    - name: Configure buildozer.spec and Fix Licenses
       run: |
-        # حل تداخل ورژن و تنظیمات نیازمندی‌ها
+        # حل تداخل ورژن و تنظیم نیازمندی‌ها
         sed -i 's/version.regex = .*/# version.regex = /g' buildozer.spec
         sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0,plyer,pillow/g' buildozer.spec
+        
+        # مجبور کردن بویلدوزر به استفاده از نسخه پایدار اندروید ۳۳ یا ۳۴ به جای ۳۷ فرسایشی
+        sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
+        sed -i 's/android.minapi = .*/android.minapi = 21/g' buildozer.spec
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
+        
+        # تایید پیش‌فرض تمام لایسنس‌های اندروید در محیط لینوکس
+        mkdir -p ~/.android
+        touch ~/.android/repositories.cfg
         
     - name: Build Android APK
       run: |
         export PATH=$PATH:~/.local/bin/
-        buildozer -v android debug
+        # ارسال دستور yes به تمام لایسنس‌های احتمالی حین ساخت
+        yes | buildozer -v android debug
 
     - name: Upload APK Artifact
       if: always()
