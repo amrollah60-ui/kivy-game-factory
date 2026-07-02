@@ -16,41 +16,43 @@ jobs:
         unzip -o game.zip
         ls -la
 
-    - name: Set up Python
+    - name: Set up Python 3.10
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: '3.10.11' # پایدارترین نسخه پایتون برای پخت کیوی
 
     - name: Install System Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev libbz2-dev
 
-    - name: Install Buildozer and Dependencies
+    - name: Install Fixed & Compatible Modules
       run: |
-        pip install --upgrade pip
-        pip install "cython<3.0.0" virtualenv
-        pip install git+https://github.com/kivy/buildozer.git
-
-    - name: Configure buildozer.spec and Fix Licenses
-      run: |
-        # حل تداخل ورژن و تنظیم نیازمندی‌ها
-        sed -i 's/version.regex = .*/# version.regex = /g' buildozer.spec
-        sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0,plyer,pillow/g' buildozer.spec
+        python -m pip install --upgrade pip
+        # قفل کردن دقیق نسخه‌های پیش‌نیاز لینوکس برای جلوگیری از تداخل
+        pip install "cython<3.0.0" virtualenv wheel
+        pip install buildozer==1.5.0 # استفاده از نسخه کاملاً پایدار بویلدوزر
         
-        # مجبور کردن بویلدوزر به استفاده از نسخه پایدار اندروید ۳۳ یا ۳۴ به جای ۳۷ فرسایشی
+    - name: Force Ultimate Compatibility in buildozer.spec
+      run: |
+        # پاک کردن تنظیمات قبلی و تزریق فرمول طلایی و هماهنگ
+        sed -i 's/version.regex = .*/# version.regex = /g' buildozer.spec
+        sed -i 's/requirements = .*/requirements = python3==3.10.11,kivy==2.3.0,plyer,pillow/g' buildozer.spec
+        
+        # قفل کردن کیت اندروید روی نسخه ۳۳ (کاملاً هماهنگ با جاوا ۱۷ و پایتون ۳.۱۰)
         sed -i 's/android.api = .*/android.api = 33/g' buildozer.spec
         sed -i 's/android.minapi = .*/android.minapi = 21/g' buildozer.spec
+        sed -i 's/android.ndk = .*/android.ndk = 25b/g' buildozer.spec
         sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
         
-        # تایید پیش‌فرض تمام لایسنس‌های اندروید در محیط لینوکس
+        # ساخت بستر لایسنس‌ها پیش از شروع پخت
         mkdir -p ~/.android
         touch ~/.android/repositories.cfg
-        
+
     - name: Build Android APK
       run: |
         export PATH=$PATH:~/.local/bin/
-        # ارسال دستور yes به تمام لایسنس‌های احتمالی حین ساخت
+        # فرستادن تاییدیه اتوماتیک به تمام ابزارهای اندروید
         yes | buildozer -v android debug
 
     - name: Upload APK Artifact
